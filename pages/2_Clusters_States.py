@@ -25,16 +25,35 @@ else:
         st.session_state.clusters_df = pd.DataFrame()
 
     with st.sidebar.form(key="project_id_form"):
-        st.subheader("Enter Project ID")
-        hcp_project_id = st.text_input("HCP Project ID")
-        project_submit = st.form_submit_button("List Clusters")
+        st.subheader("Select a Project ID")
+        # Check if project data is available in session state
+        if 'projects_df' in st.session_state and not st.session_state.projects_df.empty:
+            # Create a list of project IDs for the selectbox
+            project_options = st.session_state.projects_df['projectId'].tolist()
+            hcp_project_id = st.selectbox("HCP Project ID", options=project_options)
+            project_submit = st.form_submit_button("List Clusters")
+        else:
+            st.warning("No projects found. Please go to the 'Projects States' page to list your projects first.")
+            project_submit = False
+            hcp_project_id = None
         
     if project_submit:
         if hcp_project_id:
             st.session_state.hcp_project_id = hcp_project_id
             st.session_state.project_id_entered = True
+
+            # This is the new refresh logic for the button
+            with st.spinner("Refreshing clusters..."):
+                try:
+                    st.session_state.clusters_df = utils.get_clusters(
+                        hcp_url, hcp_api_access_key, st.session_state.hcp_project_id
+                    )
+                    st.success("Clusters refreshed successfully!")
+                except Exception as e:
+                    st.error(f"Failed to refresh clusters. Error: {e}")
+                    st.session_state.clusters_df = pd.DataFrame()
         else:
-            st.error("Please enter a Project ID.")
+            st.error("Please select a Project ID.")
 
     # Main content area
     if st.session_state.project_id_entered:
@@ -67,26 +86,11 @@ else:
                     st.error(f"Failed to refresh clusters. Error: {e}")
                     st.session_state.clusters_df = pd.DataFrame()
 
-        # Initial cluster list display
-        if st.session_state.clusters_df.empty:
-            with st.spinner("Fetching clusters..."):
-                try:
-                    st.session_state.clusters_df = utils.get_clusters(
-                        hcp_url, hcp_api_access_key, st.session_state.hcp_project_id
-                    )
-                except Exception as e:
-                    st.error(f"Failed to retrieve clusters. Error: {e}")
-                    st.session_state.clusters_df = pd.DataFrame()
-
-        # Display the cluster table if data is available
-        if not st.session_state.clusters_df.empty:
+        # Display the cluster table. Added a check for None before calling .empty
+        if st.session_state.clusters_df is not None and not st.session_state.clusters_df.empty:
             st.dataframe(st.session_state.clusters_df)
-        else:
+        elif not st.session_state.create_mode and not st.session_state.delete_mode:
             st.info("No clusters found for this project.")
-
-        # Delete Cluster form logic
-        if delete_button:
-            st.session_state.delete_mode = True
 
         if st.session_state.delete_mode:
             with st.form("delete_cluster_form"):

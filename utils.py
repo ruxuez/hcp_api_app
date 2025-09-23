@@ -58,6 +58,7 @@ def get_projects(HCP_URL, HCP_API_ACCESS_KEY):
 
     except Exception as e:
         st.error(f"Connection Error : {e}")
+        raise Exception(f"API request failed: {e}")
     
 
 def get_clusters(HCP_URL, HCP_API_ACCESS_KEY, HCP_PROJECT_ID):
@@ -67,42 +68,49 @@ def get_clusters(HCP_URL, HCP_API_ACCESS_KEY, HCP_PROJECT_ID):
         "x-access-key": HCP_API_ACCESS_KEY,
     }
     try:
-        response = requests.get(api_url, headers=headers, verify=False)  # verify=False car ton curl utilise --insecure
+        response = requests.get(api_url, headers=headers, verify=False)
         st.write("Below is the cURL command executed:")
         st.code(f"{api_url}", language="bash")
-        if response.status_code == 200:
-            data = response.json()
-            clusters = data.get("data", [])
-            # On extrait uniquement les champs voulus
-            simplified = []
-            for c in clusters:
-                psr = c.get("psr", {})
-                delete_time = psr.get("deleteTime")
+        
+        # Raise an HTTPError for bad responses (4xx or 5xx)
+        response.raise_for_status()
 
-                phase = "Deleted" if delete_time else psr.get("phase")
+        data = response.json()
+        clusters = data.get("data", [])
+        
+        # On extrait uniquement les champs voulus
+        simplified = []
+        for c in clusters:
+            psr = c.get("psr", {})
+            delete_time = psr.get("deleteTime")
 
-                simplified.append({
-                    "clusterId": c.get("clusterId"),
-                    "name": c.get("name"),
-                    "instances": psr.get("instances"),
-                    "phase": phase,
-                    "pgType": psr.get("pgType"),
-                    "majorVersion": psr.get("majorVersion"),
-                    "createdTime": psr.get("createTime"),
-                    "deletedTime": psr.get("deleteTime"),
-                })
+            phase = "Deleted" if delete_time else psr.get("phase")
 
-            df = pd.DataFrame(simplified)
-            # Convert createdTime to datetime for proper sorting
-            df["createdTime"] = pd.to_datetime(df["createdTime"])
-            df = df.sort_values(by="createdTime", ascending=False)
-            return df
+            simplified.append({
+                "clusterId": c.get("clusterId"),
+                "name": c.get("name"),
+                "instances": psr.get("instances"),
+                "phase": phase,
+                "pgType": psr.get("pgType"),
+                "majorVersion": psr.get("majorVersion"),
+                "createdTime": psr.get("createTime"),
+                "deletedTime": psr.get("deleteTime"),
+            })
 
-        else:
-            st.error(f"Erreur {response.status_code}: {response.text}")
-
-    except Exception as e:
-        st.error(f"Connection Error : {e}")
+        df = pd.DataFrame(simplified)
+        # Convert createdTime to datetime for proper sorting
+        df["createdTime"] = pd.to_datetime(df["createdTime"])
+        df = df.sort_values(by="createdTime", ascending=False)
+        return df
+        
+    except requests.exceptions.HTTPError as e:
+        # This block catches errors like 404 Not Found or 401 Unauthorized
+        st.error(f"API Error ({e.response.status_code}): {e.response.text}")
+        raise
+    except requests.exceptions.RequestException as e:
+        # This block catches all other request errors (e.g., connection issues)
+        st.error(f"Connection Error: {e}")
+        raise
 
 
 def delete_cluster(HCP_URL, HCP_API_ACCESS_KEY, HCP_PROJECT_ID, cluster_id):
