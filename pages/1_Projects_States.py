@@ -1,9 +1,6 @@
 # 1_Projects_States.py
-from logzero import logger
-import pandas as pd
 import streamlit as st
 import utils
-from time import sleep
 
 st.markdown(
     """
