@@ -28,10 +28,14 @@ else:
         st.subheader("Select a Project ID")
         # Check if project data is available in session state
         if 'projects_df' in st.session_state and not st.session_state.projects_df.empty:
-            # Create a list of project IDs for the selectbox
-            project_options = st.session_state.projects_df['projectId'].tolist()
-            hcp_project_id = st.selectbox("HCP Project ID", options=project_options)
+            # Create a list of formatted strings for the selectbox: "id - name"
+            project_display_names = [f"{row['projectName']} - {row['projectId']}" for _, row in st.session_state.projects_df.iterrows()]
+            
+            selected_project_name = st.selectbox("HCP Project", options=project_display_names)
             project_submit = st.form_submit_button("List Clusters")
+
+            # Extract the project ID from the selected formatted string
+            hcp_project_id = selected_project_name.split(' - ')[1]
         else:
             st.warning("No projects found. Please go to the 'Projects States' page to list your projects first.")
             project_submit = False

@@ -4,7 +4,7 @@ import utils
 st.set_page_config(
     page_title="Hybrid Manager Clusters Management",
     layout="wide",
-    page_icon="📍"
+    page_icon="🚀"
 )
 
 st.title("Welcome to the Cluster Management App!")
