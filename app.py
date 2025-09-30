@@ -1,5 +1,6 @@
 import streamlit as st
 import utils
+import os
 
 st.set_page_config(
     page_title="Hybrid Manager Clusters Management",
@@ -17,6 +18,10 @@ st.write("Please use the sidebar to navigate between pages.")
 
 st.title("Connect to Hybrid Manager")
 
+# --- 1. Attempt to read environment variables ---
+env_hcp_url = os.environ.get("HCP_URL", "")
+env_hcp_api_access_key = os.environ.get("HCP_API_ACCESS_KEY", "")
+
 # Check if credentials are already in session state
 if "HCP_URL" in st.session_state and "HCP_API_ACCESS_KEY" in st.session_state:
     st.success("You are already connected to Hybrid Manager! Use the sidebar to navigate.")
@@ -24,8 +29,8 @@ if "HCP_URL" in st.session_state and "HCP_API_ACCESS_KEY" in st.session_state:
 
 with st.form(key="credentials_form"):
     st.subheader("Enter your API Credentials")
-    hcp_url = st.text_input("HCP_URL", help="The URL for your Hybrid Manager API.")
-    hcp_api_access_key = st.text_input("HCP_API_ACCESS_KEY", type="password", help="Your access key for the API.")
+    hcp_url = st.text_input("HCP_URL", env_hcp_url, help="The URL for your Hybrid Manager API.")
+    hcp_api_access_key = st.text_input("HCP_API_ACCESS_KEY", env_hcp_api_access_key, type="password", help="Your access key for the API.")
 
     connect_button = st.form_submit_button("Connect to your Hybrid Manager")
 
